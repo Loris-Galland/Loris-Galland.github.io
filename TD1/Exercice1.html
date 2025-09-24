@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercice 1 - Géolocalisation</title>
+    <link rel="stylesheet" href="../../assets/css/exercice1.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Exercice 1 - Géolocalisation HTML5</h1>
+            <nav>
+                <a href="../../index.html" class="back-link">Retour à l'accueil</a>
+            </nav>
+        </header>
+        
+        <div class="controls">
+            <button onclick="getCurrentLocation()" id="currentBtn">Position Actuelle (getCurrentPosition)</button>
+            <button onclick="toggleWatchPosition()" id="watchBtn">Surveillance (watchPosition)</button>
+            <button onclick="clearResults()" id="clearBtn">Effacer</button>
+        </div>
+
+        <div id="status" class="status waiting">
+            Cliquez sur un bouton pour tester la géolocalisation
+        </div>
+
+        <div class="results">
+            <div class="result-section">
+                <h3>getCurrentPosition()</h3>
+                <div id="currentResults">
+                    <div class="data-item">
+                        <span class="data-label">Statut:</span>
+                        <span class="data-value">Non testé</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="result-section">
+                <h3>watchPosition()</h3>
+                <div id="watchResults">
+                    <div class="data-item">
+                        <span class="data-label">Statut:</span>
+                        <span class="data-value">Non démarré</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-section comparison">
+            <h3>Comparaison des méthodes</h3>
+            <div id="comparison">
+                <p><strong>getCurrentPosition():</strong> Obtient la position une seule fois</p>
+                <p><strong>watchPosition():</strong> Surveille les changements de position en continu</p>
+                <p>Testez en vous déplaçant pour voir la différence !</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../assets/js/exercice1.js"></script>
+</body>
+</html>
