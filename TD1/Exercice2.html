@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercice 2 - Leaflet </title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link rel="stylesheet" href="../assets/css/Exercice2.css">
+</head>
+<body>
+    <header class="header">
+        <h1>Exercice 2 - Leaflet & Géolocalisation</h1>
+        <p>Cartes interactives avec OpenStreetMap</p>
+        <nav>
+            <a href="../../index.html" class="back-link">Retour à l'accueil</a>
+        </nav>
+    </header>
+
+    <div class="controls">
+        <button onclick="initializeMap()">Initialiser la carte</button>
+        <button onclick="findMyLocation()">Ma position</button>
+        <button onclick="addNiceMarker()">Ajouter Nice</button>
+        <button onclick="drawBermudaTriangle()">Triangle des Bermudes</button>
+        <button onclick="calculateDistanceToMarseille()">Distance Marseille</button>
+        <button onclick="addPrecisionCircle()">Cercle de précision</button>
+        <button onclick="changeMapStyle()">Changer style</button>
+        <button onclick="loadGeoJsonData()">Données GeoJSON</button>
+        <button onclick="showRoute()">Trajet OSRM</button>
+        <button onclick="clearMap()">Effacer</button>
+    </div>
+
+    <div id="status" class="status">
+        Cliquez sur "Initialiser la carte" pour commencer
+    </div>
+
+    <div id="map"></div>
+
+    <div class="info-panel" id="infoPanel">
+        <h4>Informations</h4>
+        <div id="infoContent">
+            <div class="info-item">Position: Non définie</div>
+            <div class="info-item">Précision: Non mesurée</div>
+            <div class="info-item">Markers: 0</div>
+            <div class="info-item">Style: OpenStreetMap</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="../assets/js/Exercice2.js"></script>
+</body>
+</html>
