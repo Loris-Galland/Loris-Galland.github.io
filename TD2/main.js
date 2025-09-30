@@ -107,20 +107,15 @@ const particles = new THREE.Points(
 scene.add(particles);
 
 //  DeviceOrientation 
+let gyroRotation = { x: 0, y: 0, z: 0 }; // stocke la rotation du téléphone
+
 function handleOrientation(event) {
   const { alpha, beta, gamma } = event;
   if (alpha !== null && beta !== null && gamma !== null) {
-    // contrôle simple : fait tourner les objets avec le téléphone
-    cube.rotation.y = THREE.MathUtils.degToRad(alpha);
-    cube.rotation.x = THREE.MathUtils.degToRad(beta - 90);
-    
-    sphere.rotation.y = THREE.MathUtils.degToRad(alpha * 0.5);
-    sphere.rotation.x = THREE.MathUtils.degToRad(beta * 0.5);
-    
-    if (model) {
-      model.rotation.y = THREE.MathUtils.degToRad(alpha * 0.3);
-      model.rotation.x = THREE.MathUtils.degToRad(beta * 0.3);
-    }
+    // sauvegarde la rotation du gyroscope
+    gyroRotation.x = THREE.MathUtils.degToRad(beta - 90);
+    gyroRotation.y = THREE.MathUtils.degToRad(alpha);
+    gyroRotation.z = 0;
   }
 }
 
@@ -148,11 +143,20 @@ function updateHUD() {
 function animate() {
   const t = clock.getElapsedTime();
 
-  // Animations
-  //cube.rotation.x += t * 0.01; 
-  //cube.rotation.y += t * 0.01;
+  // Animations cube + gyroscope
+  cube.rotation.x = t * 0.6 + gyroRotation.x;
+  cube.rotation.y = t * 0.8 + gyroRotation.y;
 
-  //sphere.position.y = Math.sin(t * 2) * 0.5;
+  // Animations sphère + gyroscope
+  sphere.position.y = Math.sin(t * 2) * 0.5;
+  sphere.rotation.x = gyroRotation.x * 0.5;
+  sphere.rotation.y = gyroRotation.y * 0.5;
+
+  // Si le modèle GLTF est chargé
+  if (model) {
+    model.rotation.x = gyroRotation.x * 0.3;
+    model.rotation.y = gyroRotation.y * 0.3;
+  }
 
   // Particules qui tombent
   const pos = particles.geometry.attributes.position;
