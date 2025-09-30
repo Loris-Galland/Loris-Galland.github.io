@@ -19,9 +19,9 @@ var createScene = function () {
   // ArcRotateCamera pour le dezoom
   const camera = new BABYLON.ArcRotateCamera(
     "camera1",
-    -Math.PI / 2, 
-    Math.PI / 3.5, 
-    8, 
+    -Math.PI / 2,
+    Math.PI / 3.5,
+    8,
     new BABYLON.Vector3(0, 0, 0),
     scene
   );
@@ -29,9 +29,9 @@ var createScene = function () {
   camera.lowerRadiusLimit = 3;
   camera.upperRadiusLimit = 40;
   camera.wheelPrecision = 100;
-  camera.allowUpsideDown = false; 
-  camera.lowerBetaLimit = 0.1; 
-  camera.upperBetaLimit = Math.PI / 2; 
+  camera.allowUpsideDown = false;
+  camera.lowerBetaLimit = 0.1;
+  camera.upperBetaLimit = Math.PI / 2;
 
   // Lumières
   const hemiLight = new BABYLON.HemisphericLight(
@@ -98,8 +98,10 @@ var createScene = function () {
         });
         model.position = new BABYLON.Vector3(0, 0, -3);
         model.scaling = new BABYLON.Vector3(2, 2, 2);
-        
-        model.rotation.y = Math.PI / 2;
+
+        // rotation de base pour qu’il soit bien droit
+        model.baseRotation = new BABYLON.Vector3(-Math.PI / 2, Math.PI / 2, 0);
+        model.rotation.copyFrom(model.baseRotation);
       }
       console.log("Modèle GLTF chargé !");
     },
@@ -167,10 +169,11 @@ var createScene = function () {
     sphere.rotation.x = gyroRotation.x * 0.5;
     sphere.rotation.y = gyroRotation.y * 0.5;
 
-    // modèle + offset
+    // modèle + offset (on garde la baseRotation en plus du gyro)
     if (model) {
-      model.rotation.x = gyroRotation.x * 0.3;
-      model.rotation.y = gyroRotation.y * 0.3;
+      model.rotation.x = model.baseRotation.x + gyroRotation.x * 0.3;
+      model.rotation.y = model.baseRotation.y + gyroRotation.y * 0.3;
+      model.rotation.z = model.baseRotation.z;
     }
 
     updateHUD();
