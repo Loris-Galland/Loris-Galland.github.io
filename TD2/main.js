@@ -70,11 +70,12 @@ sphere.castShadow = true;
 scene.add(sphere);
 
 // GLTF Model 
+let model = null; 
 const loader = new GLTFLoader();
 loader.load(
   './ressources/scene.gltf',
   (gltf) => {
-    const model = gltf.scene;
+    model = gltf.scene;
     model.position.set(0, -1, -3);
     model.scale.setScalar(2);
     model.traverse((n) => {
@@ -106,16 +107,24 @@ const particles = new THREE.Points(
 scene.add(particles);
 
 //  DeviceOrientation 
-if (window.DeviceOrientationEvent) {
-  window.addEventListener('deviceorientation', (event) => {
-    const { alpha, beta, gamma } = event;
-    if (alpha !== null && beta !== null && gamma !== null) {
-      // contrôle simple : fait tourner la caméra
-      camera.rotation.x = THREE.MathUtils.degToRad(beta - 90);
-      camera.rotation.y = THREE.MathUtils.degToRad(alpha);
+function handleOrientation(event) {
+  const { alpha, beta, gamma } = event;
+  if (alpha !== null && beta !== null && gamma !== null) {
+    // contrôle simple : fait tourner les objets avec le téléphone
+    cube.rotation.y = THREE.MathUtils.degToRad(alpha);
+    cube.rotation.x = THREE.MathUtils.degToRad(beta - 90);
+    
+    sphere.rotation.y = THREE.MathUtils.degToRad(alpha * 0.5);
+    sphere.rotation.x = THREE.MathUtils.degToRad(beta * 0.5);
+    
+    if (model) {
+      model.rotation.y = THREE.MathUtils.degToRad(alpha * 0.3);
+      model.rotation.x = THREE.MathUtils.degToRad(beta * 0.3);
     }
-  });
+  }
 }
+
+window.addEventListener('deviceorientation', handleOrientation);
 
 // Animation 
 const clock = new THREE.Clock();
@@ -140,8 +149,8 @@ function animate() {
   const t = clock.getElapsedTime();
 
   // Animations
-  cube.rotation.x = t * 0.6;
-  cube.rotation.y = t * 0.8;
+  cube.rotation.x += t * 0.01; 
+  cube.rotation.y += t * 0.01;
 
   sphere.position.y = Math.sin(t * 2) * 0.5;
 
