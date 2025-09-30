@@ -149,10 +149,10 @@ function animate() {
   const t = clock.getElapsedTime();
 
   // Animations
-  cube.rotation.x += t * 0.01; 
-  cube.rotation.y += t * 0.01;
+  //cube.rotation.x += t * 0.01; 
+  //cube.rotation.y += t * 0.01;
 
-  sphere.position.y = Math.sin(t * 2) * 0.5;
+  //sphere.position.y = Math.sin(t * 2) * 0.5;
 
   // Particules qui tombent
   const pos = particles.geometry.attributes.position;
