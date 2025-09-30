@@ -26,17 +26,20 @@ var createScene = function () {
     // Sol
     const ground = BABYLON.MeshBuilder.CreateGround("ground", {width:40, height:40}, scene);
     ground.position.y = -1;
+    const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+    groundMat.diffuseColor = new BABYLON.Color3(0.17, 0.18, 0.21); 
+    ground.material = groundMat;
 
     // Cube
     const cube = BABYLON.MeshBuilder.CreateBox("cube", {size:1.2}, scene);
-    cube.position = new BABYLON.Vector3(-2,0.6,0);
+    cube.position = new BABYLON.Vector3(-2,0.6,1); // devant le modèle
     const cubeMat = new BABYLON.StandardMaterial("cubeMat", scene);
     cubeMat.diffuseTexture = new BABYLON.Texture("https://threejs.org/examples/textures/brick_diffuse.jpg", scene);
     cube.material = cubeMat;
 
     // Sphère
     const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter:1.6, segments:32}, scene);
-    sphere.position = new BABYLON.Vector3(2,0.8,0);
+    sphere.position = new BABYLON.Vector3(2,0.8,1); // devant le modèle
     const sphereMat = new BABYLON.StandardMaterial("sphereMat", scene);
     sphereMat.diffuseColor = new BABYLON.Color3(1,0.48,0.42);
     sphere.material = sphereMat;
@@ -53,7 +56,6 @@ var createScene = function () {
                 model = new BABYLON.TransformNode("modelRoot", scene); // un noeud parent pour tout le modèle
                 meshes.forEach(m => {
                     m.parent = model;
-                    // Ajuster shadows si nécessaire
                     if(m instanceof BABYLON.Mesh){
                         m.receiveShadows = true;
                     }
@@ -72,7 +74,7 @@ var createScene = function () {
     // Particules 
     const particleSystem = new BABYLON.ParticleSystem("particles", 500, scene);
     particleSystem.particleTexture = new BABYLON.Texture("https://playground.babylonjs.com/textures/flare.png", scene);
-    particleSystem.emitter = new BABYLON.Vector3(0,5,0);
+    particleSystem.emitter = new BABYLON.Vector3(0,2,0); // plus haut pour tomber sur objets
     particleSystem.minEmitBox = new BABYLON.Vector3(-10,0,-10);
     particleSystem.maxEmitBox = new BABYLON.Vector3(10,0,10);
     particleSystem.color1 = new BABYLON.Color4(1,1,1,1);
@@ -82,7 +84,7 @@ var createScene = function () {
     particleSystem.minLifeTime = 1;
     particleSystem.maxLifeTime = 3;
     particleSystem.emitRate = 50;
-    particleSystem.gravity = new BABYLON.Vector3(0,-0.1,0);
+    particleSystem.gravity = new BABYLON.Vector3(0,-0.1,0); // tombe vers le bas
     particleSystem.start();
 
     // HUD
