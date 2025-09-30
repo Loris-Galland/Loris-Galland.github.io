@@ -1,0 +1,37 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #20232a;
+  overflow: hidden;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+.info {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 6px 10px;
+  background: rgba(0,0,0,0.4);
+  color: white;
+  font-family: sans-serif;
+  font-size: 14px;
+  border-radius: 6px;
+}
+
+#hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0,0,0,0.5);
+  color: #0f0;
+  font-family: monospace;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
