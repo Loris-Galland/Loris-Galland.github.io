@@ -13,9 +13,19 @@ var createScene = function () {
     scene.fogColor = new BABYLON.Color3(0.13,0.14,0.16);
 
     // Caméra
-    const camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0,5,-10), scene);
-    camera.setTarget(BABYLON.Vector3.Zero());
+    // ArcRotateCamera pour le dezoom
+    const camera = new BABYLON.ArcRotateCamera(
+      "camera1",
+      -Math.PI / 2,        
+      Math.PI / 3.5,       
+      8,                   
+      new BABYLON.Vector3(0, 0, 0), 
+      scene
+    );
     camera.attachControl(canvas, true);
+    camera.lowerRadiusLimit = 3;   
+    camera.upperRadiusLimit = 40;  
+    camera.wheelPrecision = 100;   
 
     // Lumières
     const hemiLight = new BABYLON.HemisphericLight("hemiLight", new BABYLON.Vector3(0,1,0), scene);
@@ -62,6 +72,7 @@ var createScene = function () {
                 });
                 model.position = new BABYLON.Vector3(0,0,-3);
                 model.scaling = new BABYLON.Vector3(2,2,2);
+                // model.rotation.y = Math.PI / 2;
             }
             console.log("Modèle GLTF chargé !");
         },
@@ -74,7 +85,7 @@ var createScene = function () {
     // Particules 
     const particleSystem = new BABYLON.ParticleSystem("particles", 500, scene);
     particleSystem.particleTexture = new BABYLON.Texture("https://playground.babylonjs.com/textures/flare.png", scene);
-    particleSystem.emitter = new BABYLON.Vector3(0,2,0); 
+    particleSystem.emitter = new BABYLON.Vector3(0,6,0); 
     particleSystem.minEmitBox = new BABYLON.Vector3(-10,0,-10);
     particleSystem.maxEmitBox = new BABYLON.Vector3(10,0,10);
     particleSystem.color1 = new BABYLON.Color4(1,1,1,1);
@@ -83,8 +94,10 @@ var createScene = function () {
     particleSystem.maxSize = 0.1;
     particleSystem.minLifeTime = 1;
     particleSystem.maxLifeTime = 3;
-    particleSystem.emitRate = 50;
-    particleSystem.gravity = new BABYLON.Vector3(0,-0.1,0); 
+    particleSystem.emitRate = 120;                    
+    particleSystem.gravity = new BABYLON.Vector3(0,-0.6,0); 
+    particleSystem.direction1 = new BABYLON.Vector3(-0.1,-1,-0.1);
+    particleSystem.direction2 = new BABYLON.Vector3(0.1,-1,0.1);
     particleSystem.start();
 
     // HUD
@@ -95,25 +108,39 @@ var createScene = function () {
     }
 
     // DeviceOrientation
-    let gyroRotation = {x:0, y:0};
+    let gyroRotation = {x:0, y:0}; 
     window.addEventListener('deviceorientation', (event)=>{
         const {alpha, beta} = event;
         if(alpha!==null && beta!==null){
-            gyroRotation.x = BABYLON.Angle.FromDegrees(beta-90).radians();
+            gyroRotation.x = BABYLON.Angle.FromDegrees(beta - 90).radians();
             gyroRotation.y = BABYLON.Angle.FromDegrees(alpha).radians();
         }
     });
 
     // Animation
+    let accumTime = 0;
     scene.registerBeforeRender(function(){
-        cube.rotation.x += 0.01 + gyroRotation.x;
-        cube.rotation.y += 0.01 + gyroRotation.y;
-        sphere.rotation.x = gyroRotation.x*0.5;
-        sphere.rotation.y = gyroRotation.y*0.5;
+        accumTime += engine.getDeltaTime() / 1000; 
+
+        // base anim 
+        const baseX = accumTime * 0.6;
+        const baseY = accumTime * 0.8;
+
+        // Animation + gyroscope 
+        cube.rotation.x = baseX + gyroRotation.x * 0.25;
+        cube.rotation.y = baseY + gyroRotation.y * 0.25;
+
+        // sphère + gyroscope
+        sphere.position.y = 0.8 + Math.sin(accumTime * 2) * 0.15;
+        sphere.rotation.x = gyroRotation.x * 0.5;
+        sphere.rotation.y = gyroRotation.y * 0.5;
+
+        // modèle + offset 
         if(model){
-            model.rotation.x = gyroRotation.x*0.3;
-            model.rotation.y = gyroRotation.y*0.3;
+            model.rotation.x = gyroRotation.x * 0.3;
+            model.rotation.y = gyroRotation.y * 0.3;
         }
+
         updateHUD();
     });
 
