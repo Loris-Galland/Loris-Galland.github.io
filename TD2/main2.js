@@ -43,11 +43,31 @@ var createScene = function () {
 
     // GLTF Model
     let model = null;
-    BABYLON.SceneLoader.ImportMesh("", "./ressources/", "scene.gltf", scene, function(meshes){
-        model = meshes[0];
-        model.position = new BABYLON.Vector3(0,0,-3);
-        model.scaling = new BABYLON.Vector3(2,2,2);
-    });
+    BABYLON.SceneLoader.ImportMesh(
+        "",                  // importer tous les meshes
+        "./ressources/",     // dossier
+        "scene.gltf",        // fichier
+        scene,
+        function(meshes) {   // callback de succès
+            if(meshes.length > 0){
+                model = new BABYLON.TransformNode("modelRoot", scene); // un noeud parent pour tout le modèle
+                meshes.forEach(m => {
+                    m.parent = model;
+                    // Ajuster shadows si nécessaire
+                    if(m instanceof BABYLON.Mesh){
+                        m.receiveShadows = true;
+                    }
+                });
+                model.position = new BABYLON.Vector3(0,0,-3);
+                model.scaling = new BABYLON.Vector3(2,2,2);
+            }
+            console.log("Modèle GLTF chargé !");
+        },
+        null, // progression optionnelle
+        function(scene, message, exception){ // callback d'erreur
+            console.error("Erreur de chargement GLTF :", message, exception);
+        }
+    );
 
     // Particules 
     const particleSystem = new BABYLON.ParticleSystem("particles", 500, scene);
