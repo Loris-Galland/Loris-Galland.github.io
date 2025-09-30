@@ -98,7 +98,8 @@ var createScene = function () {
         });
         model.position = new BABYLON.Vector3(0, 0, -3);
         model.scaling = new BABYLON.Vector3(2, 2, 2);
-        // model.rotation.y = Math.PI / 2;
+        
+        model.rotation.y = Math.PI / 2;
       }
       console.log("Modèle GLTF chargé !");
     },
