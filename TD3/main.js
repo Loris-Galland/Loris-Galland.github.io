@@ -1,7 +1,6 @@
 let scene, camera, renderer, globe, raycaster, mouse;
 let userMarker3D,
   countryMarkers = [];
-let autoRotate = false;
 let countries = [];
 let map,
   userMarkerLeaflet,
@@ -15,7 +14,6 @@ let dragStart = { x: 0, y: 0 };
 let hasMoved = false;
 let justDragged = false;
 
-// Exercice 1
 // Initialisation de la scène Three.js
 function initThreeJS() {
   scene = new THREE.Scene();
@@ -161,7 +159,7 @@ async function loadCountries() {
     document.getElementById("countryCount").textContent = countryMarkers.length;
     addCountriesToLeaflet();
   } catch {
-
+    // Gestion simplifiée sans console ni alert
   }
 }
 
@@ -213,10 +211,8 @@ function onGlobeClick(event) {
 
 // Rotation vers une position donnée
 function rotateGlobeToPosition(lat, lon) {
-  autoRotate = false;
-  document.getElementById("autoRotate").checked = false;
   globe.rotation.y = (-lon * Math.PI) / 180;
-  globe.rotation.x = (-(lat * Math.PI) / 180) * 0.3;
+  globe.rotation.x = -(lat * Math.PI) / 180 * 0.3;
 }
 
 // Initialisation de Leaflet
@@ -256,25 +252,27 @@ function addCountriesToLeaflet() {
 // Géolocalisation utilisateur
 function findMyLocation() {
   if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition((position) => {
-    const lat = position.coords.latitude;
-    const lon = position.coords.longitude;
-    userPosition = { lat, lon };
-    addUserMarker3D(lat, lon);
-    if (userMarkerLeaflet) map.removeLayer(userMarkerLeaflet);
-    userMarkerLeaflet = L.marker([lat, lon], {
-      icon: L.divIcon({
-        className: "user-marker-leaflet",
-        html: '<div style="background: #ff0000; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>',
-        iconSize: [15, 15],
-      }),
-    }).addTo(map);
-    userMarkerLeaflet.bindPopup(`<b>Votre position</b>`);
-    map.setView([lat, lon], 10);
-    document.getElementById("userCoords").textContent = `${lat.toFixed(
-      2
-    )}°, ${lon.toFixed(2)}°`;
-  });
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      userPosition = { lat, lon };
+      addUserMarker3D(lat, lon);
+      if (userMarkerLeaflet) map.removeLayer(userMarkerLeaflet);
+      userMarkerLeaflet = L.marker([lat, lon], {
+        icon: L.divIcon({
+          className: "user-marker-leaflet",
+          html: '<div style="background: #ff0000; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>',
+          iconSize: [15, 15],
+        }),
+      }).addTo(map);
+      userMarkerLeaflet.bindPopup(`<b>Votre position</b>`);
+      map.setView([lat, lon], 10);
+      document.getElementById("userCoords").textContent = `${lat.toFixed(
+        2
+      )}°, ${lon.toFixed(2)}°`;
+    }
+  );
 }
 
 // Réinitialisation de la vue du globe
@@ -282,8 +280,6 @@ function resetGlobeView() {
   camera.position.set(0, 0, 3);
   camera.lookAt(0, 0, 0);
   globe.rotation.set(0, 0, 0);
-  autoRotate = false;
-  document.getElementById("autoRotate").checked = false;
 }
 
 // Redimensionnement
@@ -301,8 +297,6 @@ function onMouseDown(e) {
   hasMoved = false;
   dragStart.x = e.clientX;
   dragStart.y = e.clientY;
-  autoRotate = false;
-  document.getElementById("autoRotate").checked = false;
 }
 function onMouseMove(e) {
   if (!isDragging) return;
@@ -329,9 +323,6 @@ function onMouseUp() {
 }
 
 // Gestion des boutons de l'interface
-document.getElementById("autoRotate").addEventListener("change", (e) => {
-  autoRotate = e.target.checked;
-});
 document.getElementById("showUserPosition").addEventListener("change", (e) => {
   if (userMarker3D) userMarker3D.visible = e.target.checked;
   if (userMarkerLeaflet) {
