@@ -35,7 +35,6 @@ function initThreeJS() {
   renderer.setPixelRatio(window.devicePixelRatio);
   container.appendChild(renderer.domElement);
 
-  // lumières
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambientLight);
 
@@ -43,13 +42,11 @@ function initThreeJS() {
   directionalLight.position.set(5, 3, 5);
   scene.add(directionalLight);
 
-  // Raycaster pour la détection des clics
   raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2();
 
   createGlobe();
 
-  // Evénements souris
   renderer.domElement.addEventListener("click", onGlobeClick);
   renderer.domElement.addEventListener("mousedown", onMouseDown);
   renderer.domElement.addEventListener("mousemove", onMouseMove);
@@ -64,10 +61,7 @@ function createGlobe() {
   const geometry = new THREE.SphereGeometry(1, 64, 64);
   const loader = new THREE.TextureLoader();
   const earthTexture = loader.load(
-    "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg",
-    () => console.log("Texture de la Terre chargée"),
-    undefined,
-    (err) => console.error("Erreur chargement texture:", err)
+    "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg"
   );
 
   const material = new THREE.MeshStandardMaterial({
@@ -79,7 +73,6 @@ function createGlobe() {
   globe = new THREE.Mesh(geometry, material);
   scene.add(globe);
 
-  // Groupe pour les drapeaux
   flagGroup = new THREE.Group();
   globe.add(flagGroup);
 }
@@ -125,119 +118,55 @@ function addUserMarker3D(lat, lon) {
   rotateGlobeToPosition(lat, lon);
 }
 
+// Ajout d'un drapeau sur le globe
+function addFlag(lat, lon, flagUrl, name) {
+  const pos = latLonToVector3(lat, lon, 1, 0.02);
+  const flagTexture = new THREE.TextureLoader().load(flagUrl);
+  const flagGeo = new THREE.PlaneGeometry(0.1, 0.05);
+  const flagMat = new THREE.MeshBasicMaterial({
+    map: flagTexture,
+    side: THREE.DoubleSide,
+    transparent: true,
+  });
+
+  const flag = new THREE.Mesh(flagGeo, flagMat);
+  flag.position.copy(pos);
+  flag.lookAt(new THREE.Vector3(0, 0, 0));
+
+  flag.userData = { country: name, lat: lat, lon: lon, flag: flagUrl };
+  flagGroup.add(flag);
+  countryMarkers.push(flag);
+}
+
 // Chargement des pays depuis l'API RestCountries
 async function loadCountries() {
-  showStatusMessage("Chargement des pays...");
-
   try {
-    const response = await fetch(
+    const res = await fetch(
       "https://restcountries.com/v3.1/all?fields=name,latlng,flags,capital,population"
     );
-    const allCountries = await response.json();
+    const data = await res.json();
 
-    countries = allCountries.filter((c) => c.latlng && c.latlng.length === 2);
-    console.log("Pays chargés:", countries.length);
-
-    countryMarkers.forEach((marker) => flagGroup.remove(marker));
+    countries = data.filter((c) => c.latlng && c.latlng.length == 2);
+    countryMarkers.forEach((m) => flagGroup.remove(m));
     countryMarkers = [];
     document.getElementById("countryCount").textContent = "0";
 
-    const textureLoader = new THREE.TextureLoader();
-    let loadedCount = 0;
-
-    if (countries.length === 0) {
-      hideStatusMessage();
-      addCountriesToLeaflet();
-      return;
-    }
-
-    countries.forEach((country) => {
-      const [lat, lon] = country.latlng;
-      textureLoader.load(
-        country.flags && country.flags.png ? country.flags.png : "",
-        function (texture) {
-          const material = new THREE.SpriteMaterial({
-            map: texture,
-            transparent: true,
-            depthTest: true,
-          });
-          const sprite = new THREE.Sprite(material);
-          const position = latLonToVector3(lat, lon, 1, 0.02);
-          sprite.position.copy(position);
-
-          const img = texture.image;
-          const aspect =
-            img && img.width && img.height ? img.width / img.height : 2;
-          const flagHeight = 0.08;
-          sprite.scale.set(flagHeight * aspect, flagHeight, 1);
-
-          sprite.userData = {
-            country: country.name.common,
-            lat: lat,
-            lon: lon,
-            flag: country.flags.png,
-            capital: country.capital ? country.capital[0] : "N/A",
-            population: country.population ?? 0,
-          };
-
-          flagGroup.add(sprite);
-          countryMarkers.push(sprite);
-
-          loadedCount++;
-          document.getElementById("countryCount").textContent =
-            countryMarkers.length;
-
-          if (loadedCount === countries.length) {
-            hideStatusMessage();
-            addCountriesToLeaflet();
-          }
-        },
-        undefined,
-        function (err) {
-          console.error("Erreur chargement drapeau:", err);
-          const geometry = new THREE.SphereGeometry(0.015, 16, 16);
-          const material = new THREE.MeshStandardMaterial({
-            color: 0x00ff00,
-            emissive: 0x00ff00,
-            emissiveIntensity: 0.3,
-          });
-          const marker = new THREE.Mesh(geometry, material);
-          const position = latLonToVector3(lat, lon, 1, 0.02);
-          marker.position.copy(position);
-
-          marker.userData = {
-            country: country.name.common,
-            lat: lat,
-            lon: lon,
-            flag: country.flags?.png || "",
-            capital: country.capital ? country.capital[0] : "N/A",
-            population: country.population ?? 0,
-          };
-
-          flagGroup.add(marker);
-          countryMarkers.push(marker);
-
-          loadedCount++;
-          document.getElementById("countryCount").textContent =
-            countryMarkers.length;
-
-          if (loadedCount === countries.length) {
-            hideStatusMessage();
-            addCountriesToLeaflet();
-          }
-        }
-      );
+    countries.forEach((c) => {
+      const lat = c.latlng[0];
+      const lon = c.latlng[1];
+      const flagUrl = c.flags && c.flags.png ? c.flags.png : "";
+      addFlag(lat, lon, flagUrl, c.name.common);
     });
-  } catch (error) {
-    console.error("Erreur chargement pays:", error);
-    alert("Erreur lors du chargement des pays.");
-    hideStatusMessage();
+
+    document.getElementById("countryCount").textContent = countryMarkers.length;
+    addCountriesToLeaflet();
+  } catch {
+
   }
 }
 
 // Fonction d'animation
 function animate() {
-  if (autoRotate) globe.rotation.y += 0.001;
   renderer.render(scene, camera);
 }
 
@@ -261,12 +190,8 @@ function onGlobeClick(event) {
       L.popup()
         .setLatLng([clicked.lat, clicked.lon])
         .setContent(
-          `
-                    <b>${clicked.country}</b><br>
-                    <img src="${clicked.flag}" width="50"><br>
-                    Capitale: ${clicked.capital}<br>
-                    Population: ${clicked.population.toLocaleString()}
-                `
+          `<b>${clicked.country}</b><br>
+           <img src="${clicked.flag}" width="50">`
         )
         .openOn(map);
     }
@@ -290,17 +215,14 @@ function onGlobeClick(event) {
 function rotateGlobeToPosition(lat, lon) {
   autoRotate = false;
   document.getElementById("autoRotate").checked = false;
-  const targetRotationY = (-lon * Math.PI) / 180;
-  const targetRotationX = (lat * Math.PI) / 180;
-  globe.rotation.y = targetRotationY;
-  globe.rotation.x = -targetRotationX * 0.3;
+  globe.rotation.y = (-lon * Math.PI) / 180;
+  globe.rotation.x = (-(lat * Math.PI) / 180) * 0.3;
 }
 
 // Initialisation de Leaflet
 function initLeaflet() {
   map = L.map("map").setView([48.8566, 2.3522], 3);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "© OpenStreetMap contributors",
     maxZoom: 18,
   }).addTo(map);
 
@@ -325,12 +247,7 @@ function addCountriesToLeaflet() {
   countries.forEach((country) => {
     const [lat, lon] = country.latlng;
     const marker = L.marker([lat, lon]).addTo(map);
-    marker.bindPopup(`
-            <b>${country.name.common}</b><br>
-            <img src="${country.flags.png}" width="50"><br>
-            Capitale: ${country.capital ? country.capital[0] : "N/A"}<br>
-            Population: ${country.population.toLocaleString()}
-        `);
+    marker.bindPopup(`<b>${country.name.common}</b>`);
     marker.on("click", () => rotateGlobeToPosition(lat, lon));
     countryMarkersLeaflet.push(marker);
   });
@@ -338,42 +255,26 @@ function addCountriesToLeaflet() {
 
 // Géolocalisation utilisateur
 function findMyLocation() {
-  if (!navigator.geolocation) {
-    alert("Géolocalisation non supportée");
-    return;
-  }
-  showStatusMessage("Recherche de votre position...");
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
-      userPosition = { lat, lon };
-      addUserMarker3D(lat, lon);
-      if (userMarkerLeaflet) map.removeLayer(userMarkerLeaflet);
-      userMarkerLeaflet = L.marker([lat, lon], {
-        icon: L.divIcon({
-          className: "user-marker-leaflet",
-          html: '<div style="background: #ff0000; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>',
-          iconSize: [15, 15],
-        }),
-      }).addTo(map);
-      userMarkerLeaflet.bindPopup(`
-                <b>Votre position</b><br>
-                Lat: ${lat.toFixed(4)}°<br>
-                Lon: ${lon.toFixed(4)}°
-            `);
-      map.setView([lat, lon], 10);
-      document.getElementById("userCoords").textContent = `${lat.toFixed(
-        2
-      )}°, ${lon.toFixed(2)}°`;
-      hideStatusMessage();
-    },
-    (error) => {
-      console.error("Erreur géolocalisation:", error);
-      hideStatusMessage();
-      alert("Impossible de récupérer votre position");
-    }
-  );
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition((position) => {
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    userPosition = { lat, lon };
+    addUserMarker3D(lat, lon);
+    if (userMarkerLeaflet) map.removeLayer(userMarkerLeaflet);
+    userMarkerLeaflet = L.marker([lat, lon], {
+      icon: L.divIcon({
+        className: "user-marker-leaflet",
+        html: '<div style="background: #ff0000; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>',
+        iconSize: [15, 15],
+      }),
+    }).addTo(map);
+    userMarkerLeaflet.bindPopup(`<b>Votre position</b>`);
+    map.setView([lat, lon], 10);
+    document.getElementById("userCoords").textContent = `${lat.toFixed(
+      2
+    )}°, ${lon.toFixed(2)}°`;
+  });
 }
 
 // Réinitialisation de la vue du globe
@@ -385,24 +286,13 @@ function resetGlobeView() {
   document.getElementById("autoRotate").checked = false;
 }
 
-// redimensionnement
+// Redimensionnement
 function onWindowResize() {
   const container = document.getElementById("canvas-container");
   camera.aspect = container.clientWidth / container.clientHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(container.clientWidth, container.clientHeight);
   if (map) map.invalidateSize();
-}
-
-// Affichage des messages d'état
-function showStatusMessage(msg) {
-  const el = document.getElementById("statusMessage");
-  el.querySelector("h2").textContent = "Information";
-  el.querySelector("p").textContent = msg;
-  el.classList.remove("hidden");
-}
-function hideStatusMessage() {
-  document.getElementById("statusMessage").classList.add("hidden");
 }
 
 // Gestion du drag de la souris pour faire tourner le globe
@@ -458,7 +348,6 @@ document.getElementById("showCountries").addEventListener("change", (e) => {
 });
 
 window.addEventListener("DOMContentLoaded", () => {
-  console.log("Initialisation TD3...");
   initThreeJS();
   initLeaflet();
   loadCountries();
