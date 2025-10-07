@@ -1,122 +1,151 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Three.js - AR Géolocalisée</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, user-scalable=no"
+    />
     <style>
-        html, body { overflow: hidden; width: 100%; height: 100%; margin: 0; padding: 0; background: black; }
-        #info { position: absolute; bottom: 10px; left: 10px; color: white; background-color: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; font-family: sans-serif; font-size: 14px; z-index: 1000; }
-        canvas { display: block; }
+      html,
+      body {
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: black;
+      }
+      #info {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        color: white;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+        font-family: sans-serif;
+        font-size: 14px;
+        z-index: 1000;
+      }
+      canvas {
+        display: block;
+      }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>   
-</head>
-<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  </head>
+  <body>
     <div id="info">Initialisation...</div>
 
     <script>
-        // Paramètres de la scène 
-        const distance = 10;
-        const cubeSize = 1;
-        const smoothingFactor = 0.05;
+      // Paramètres de la scène
+      const distance = 10;
+      const cubeSize = 1;
+      const smoothingFactor = 0.05;
 
-        // Variables pour le lissage de l'orientation
-        let targetAngleY = 0;
-        let smoothedAngleY = 0;
+      // Variables pour le lissage de l'orientation
+      let targetAngleY = 0;
+      let smoothedAngleY = 0;
 
-        //  Création de la scène 
-        const scene = new THREE.Scene();
+      //  Création de la scène
+      const scene = new THREE.Scene();
 
-        // Caméra
-        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 0, 0);
+      // Caméra
+      const camera = new THREE.PerspectiveCamera(
+        70,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(0, 0, 0);
 
-        // Renderer
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+      // Renderer
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
 
-        // Lumière
-        const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
-        scene.add(light);
+      // Lumière
+      const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
+      scene.add(light);
 
-        // Placement fixe des cubes 
-        const createCube = (color, x, y, z, name) => {
-            const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-            const material = new THREE.MeshStandardMaterial({ color });
-            const cube = new THREE.Mesh(geometry, material);
-            cube.position.set(x, y, z);
-            cube.name = name;
-            scene.add(cube);
-        };
+      // Placement fixe des cubes
+      const createCube = (color, x, y, z, name) => {
+        const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+        const material = new THREE.MeshStandardMaterial({ color });
+        const cube = new THREE.Mesh(geometry, material);
+        cube.position.set(x, y, z);
+        cube.name = name;
+        scene.add(cube);
+      };
 
-        createCube(0xff0000, 0, 0, distance, "Nord");
-        createCube(0x00ff00, distance, 0, 0, "Est");
-        createCube(0x0000ff, 0, 0, -distance, "Sud");
-        createCube(0xffff00, -distance, 0, 0, "Ouest");
+      createCube(0xff0000, 0, 0, distance, "Nord");
+      createCube(0x00ff00, distance, 0, 0, "Est");
+      createCube(0x0000ff, 0, 0, -distance, "Sud");
+      createCube(0xffff00, -distance, 0, 0, "Ouest");
 
-        const infoDiv = document.getElementById('info');
+      const infoDiv = document.getElementById("info");
 
-        // AR Background 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-            .then(stream => {
-                const video = document.createElement('video');
-                video.setAttribute('playsinline', '');
-                video.setAttribute('autoplay', '');
-                video.srcObject = stream;
-                video.play();
+      // AR Background
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: "environment" } })
+        .then((stream) => {
+          const video = document.createElement("video");
+          video.setAttribute("playsinline", "");
+          video.setAttribute("autoplay", "");
+          video.srcObject = stream;
+          video.play();
 
-                const videoTexture = new THREE.VideoTexture(video);
-                videoTexture.minFilter = THREE.LinearFilter;
-                videoTexture.magFilter = THREE.LinearFilter;
-                videoTexture.format = THREE.RGBFormat;
+          const videoTexture = new THREE.VideoTexture(video);
+          videoTexture.minFilter = THREE.LinearFilter;
+          videoTexture.magFilter = THREE.LinearFilter;
+          videoTexture.format = THREE.RGBFormat;
 
-                const planeGeometry = new THREE.PlaneGeometry(2, 2);
-                const planeMaterial = new THREE.MeshBasicMaterial({ map: videoTexture });
-                planeMaterial.depthTest = false;
-                planeMaterial.depthWrite = false;
-
-                const backgroundMesh = new THREE.Mesh(planeGeometry, planeMaterial);
-                backgroundMesh.material.side = THREE.DoubleSide;
-                backgroundMesh.position.z = -1;
-                scene.add(backgroundMesh);
-            })
-            .catch(err => {
-                infoDiv.innerHTML = "<strong>Erreur:</strong> Caméra inaccessible. Assurez-vous d'utiliser <strong>HTTPS</strong>.";
-            });
-
-        //  Orientation listener 
-        window.addEventListener("deviceorientationabsolute", (event) => {
-            if (event.alpha !== null) {
-                const screenAngle = screen.orientation.angle || 0;
-                const compensatedAlpha = event.alpha - screenAngle;
-                targetAngleY = -compensatedAlpha;
-                infoDiv.textContent = `Cap: ${(compensatedAlpha % 360).toFixed(1)}°`;
-            }
-        }, true);
-
-        // --- Animation ---
-        const animate = () => {
-            requestAnimationFrame(animate);
-
-            let delta = targetAngleY - smoothedAngleY;
-            if (Math.abs(delta) > 180) {
-                delta -= Math.sign(delta) * 360;
-            }
-            smoothedAngleY += delta * smoothingFactor;
-
-            camera.rotation.y = THREE.MathUtils.degToRad(smoothedAngleY);
-
-            renderer.render(scene, camera);
-        };
-
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+          scene.background = videoTexture; // <-- ici
+        })
+        .catch((err) => {
+          infoDiv.innerHTML =
+            "<strong>Erreur:</strong> Caméra inaccessible. Assurez-vous d'utiliser <strong>HTTPS</strong>.";
         });
+
+      //  Orientation listener
+      window.addEventListener(
+        "deviceorientationabsolute",
+        (event) => {
+          if (event.alpha !== null) {
+            const screenAngle = screen.orientation.angle || 0;
+            const compensatedAlpha = event.alpha - screenAngle;
+            targetAngleY = -compensatedAlpha;
+            infoDiv.textContent = `Cap: ${(compensatedAlpha % 360).toFixed(
+              1
+            )}°`;
+          }
+        },
+        true
+      );
+
+      //  Animation
+      const animate = () => {
+        requestAnimationFrame(animate);
+
+        let delta = targetAngleY - smoothedAngleY;
+        if (Math.abs(delta) > 180) {
+          delta -= Math.sign(delta) * 360;
+        }
+        smoothedAngleY += delta * smoothingFactor;
+
+        camera.rotation.y = THREE.MathUtils.degToRad(smoothedAngleY);
+
+        renderer.render(scene, camera);
+      };
+
+      animate();
+
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
     </script>
-</body>
+  </body>
 </html>
