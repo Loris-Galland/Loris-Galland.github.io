@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TD3 - Géolocalisation 2D/3D</title>
+
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <a href="../index.html" class="back-link">Retour à l'accueil</a>
+
+    <div class="container">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Carte 2D - Leaflet</h2>
+          <p>Cliquez pour centrer le globe 3D</p>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Globe 3D - Three.js</h2>
+          <p>Cliquez sur un pays pour centrer la carte</p>
+        </div>
+        <div id="canvas-container"></div>
+
+        <div class="controls-panel">
+          <h3>Contrôles</h3>
+
+          <div class="control-group">
+            <label>
+              <input type="checkbox" id="autoRotate" checked />
+              Rotation automatique
+            </label>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <input type="checkbox" id="showUserPosition" checked />
+              Ma position
+            </label>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <input type="checkbox" id="showCountries" checked />
+              Afficher les pays
+            </label>
+          </div>
+
+          <div class="control-group">
+            <button onclick="findMyLocation()">Localiser ma position</button>
+            <button onclick="resetGlobeView()">Réinitialiser vue</button>
+            <button onclick="loadCountries()">Recharger pays</button>
+          </div>
+        </div>
+
+        <div class="info-panel">
+          <h4>Informations</h4>
+          <div class="info-item">
+            Pays chargés: <strong id="countryCount">0</strong>
+          </div>
+          <div class="info-item">
+            Position: <strong id="userCoords">Non définie</strong>
+          </div>
+          <div class="info-item">
+            Dernier clic: <strong id="lastClick">Aucun</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="statusMessage" class="status-message hidden">
+      <h2>Chargement...</h2>
+      <p>Initialisation de la scène</p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script src="main.js"></script>
+  </body>
+</html>
