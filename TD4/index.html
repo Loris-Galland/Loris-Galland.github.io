@@ -609,14 +609,17 @@
       function checkEasterEgg(hand) {
         const landmarks = hand.landmarks;
 
-        // Exemple simple : main sur le menton (approximation)
+        // On prend le tip de l'index et le point central des lèvres
         const indexTip = landmarks[8];
-        const wrist = landmarks[0];
+        const upperLip = landmarks[13]; // landmark approximatif pour la lèvre supérieure
+        const lowerLip = landmarks[14]; // landmark approximatif pour la lèvre inférieure
 
-        const dx = Math.abs(indexTip[0] - wrist[0]);
-        const dy = indexTip[1] < wrist[1] ? wrist[1] - indexTip[1] : 0;
+        // Distance horizontale et verticale
+        const dx = Math.abs(indexTip[0] - (upperLip[0] + lowerLip[0]) / 2);
+        const dy = Math.abs(indexTip[1] - (upperLip[1] + lowerLip[1]) / 2);
 
-        if (dx < 40 && dy > 50) {
+        // Seuils pour déclencher l'easter egg
+        if (dx < 20 && dy < 20) {
           showThinkingMonkey();
         }
       }
