@@ -1,565 +1,717 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
+  <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Carte IA - Contrôle par Gestes</title>
 
     <!-- Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <!-- TensorFlow.js et HandPose -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.7/dist/handpose.min.js"></script>
 
+    <!-- Tesseract.js pour OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.2.1/dist/tesseract.min.js"></script>
+
+    <!-- MobileNet pour la détection de drapeaux -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        html, body {
-            height: 100%;
-            overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
 
-        #map {
-            position: fixed;
-            inset: 0;
-            z-index: 1;
-        }
+      #map {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+      }
 
-        #hud {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 10;
-            background: rgba(0, 0, 0, 0.85);
-            border-radius: 10px;
-            color: white;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            padding: 15px;
-            width: 340px;
-            max-width: 90vw;
-        }
+      #hud {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+        background: rgba(0, 0, 0, 0.85);
+        border-radius: 10px;
+        color: white;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        padding: 15px;
+        width: 340px;
+        max-width: 90vw;
+      }
 
-        #hud h2 {
-            font-size: 1.1rem;
-            margin-bottom: 10px;
-            color: #4a9eff;
-        }
+      #hud h2 {
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+        color: #4a9eff;
+      }
 
-        .info-line {
-            margin: 8px 0;
-            font-size: 0.9rem;
-            display: flex;
-            justify-content: space-between;
-        }
+      .info-line {
+        margin: 8px 0;
+        font-size: 0.9rem;
+        display: flex;
+        justify-content: space-between;
+      }
 
-        .info-line label {
-            color: #ccc;
-        }
+      .info-line label {
+        color: #ccc;
+      }
 
-        .info-line span {
-            color: #4a9eff;
-            font-weight: bold;
-        }
+      .info-line span {
+        color: #4a9eff;
+        font-weight: bold;
+      }
 
-        #video-container {
-            margin-top: 12px;
-            position: relative;
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-        }
+      #video-container {
+        margin-top: 12px;
+        position: relative;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+      }
 
-        video {
-            width: 100%;
-            display: block;
-            transform: scaleX(-1);
-        }
+      video {
+        width: 100%;
+        display: block;
+        transform: scaleX(-1);
+      }
 
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            transform: scaleX(-1);
-            pointer-events: none;
-        }
+      canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        transform: scaleX(-1);
+        pointer-events: none;
+      }
 
-        #status {
-            margin-top: 10px;
-            padding: 10px;
-            background: rgba(74, 158, 255, 0.2);
-            border-radius: 6px;
-            border-left: 3px solid #4a9eff;
-            font-size: 0.85rem;
-        }
+      #status {
+        margin-top: 10px;
+        padding: 10px;
+        background: rgba(74, 158, 255, 0.2);
+        border-radius: 6px;
+        border-left: 3px solid #4a9eff;
+        font-size: 0.85rem;
+      }
 
-        .gesture-hint {
-            margin-top: 10px;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            font-size: 0.75rem;
-            color: #aaa;
-        }
+      .gesture-hint {
+        margin-top: 10px;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: #aaa;
+      }
 
-        #loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 30px;
-            border-radius: 10px;
-            color: white;
-            text-align: center;
-            z-index: 1000;
-        }
+      #loading {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        padding: 30px;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        z-index: 1000;
+      }
 
-        #loading.hidden {
-            display: none;
-        }
+      #loading.hidden {
+        display: none;
+      }
 
-        .spinner {
-            border: 3px solid #333;
-            border-top: 3px solid #4a9eff;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
+      .spinner {
+        border: 3px solid #333;
+        border-top: 3px solid #4a9eff;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
         }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
 
-        .controls {
-            margin-top: 10px;
-        }
+      .controls {
+        margin-top: 10px;
+      }
 
-        .controls button {
-            width: 100%;
-            padding: 8px;
-            margin-top: 5px;
-            background: #007acc;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.85rem;
-        }
+      .controls button {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        background: #007acc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
 
-        .controls button:hover {
-            background: #005fa3;
-        }
+      .controls button:hover {
+        background: #005fa3;
+      }
 
-        .back-link {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            color: #4a9eff;
-            text-decoration: none;
-            padding: 10px 20px;
-            background: rgba(0, 0, 0, 0.85);
-            border: 1px solid #007acc;
-            border-radius: 6px;
-            z-index: 10;
-        }
+      .back-link {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        color: #4a9eff;
+        text-decoration: none;
+        padding: 10px 20px;
+        background: rgba(0, 0, 0, 0.85);
+        border: 1px solid #007acc;
+        border-radius: 6px;
+        z-index: 10;
+      }
 
-        .back-link:hover {
-            background: #007acc;
-            color: white;
-        }
+      .back-link:hover {
+        background: #007acc;
+        color: white;
+      }
+
+      .feature-checkbox {
+        margin-top: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .log-container {
+        margin-top: 8px;
+        max-height: 100px;
+        overflow-y: auto;
+        font-size: 0.75rem;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 5px;
+        border-radius: 4px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <a href="../index.html" class="back-link">← Retour</a>
 
     <div id="map"></div>
 
     <div id="hud">
-        <h2>🤖 Contrôle IA par Gestes</h2>
-        
-        <div class="info-line">
-            <label>Position:</label>
-            <span id="coords">—</span>
-        </div>
-        <div class="info-line">
-            <label>Zoom:</label>
-            <span id="zoom">—</span>
-        </div>
-        <div class="info-line">
-            <label>Main détectée:</label>
-            <span id="handStatus">Non</span>
-        </div>
+      <h2>🤖 Contrôle IA par Gestes</h2>
 
-        <div id="video-container">
-            <video id="camera" autoplay playsinline muted></video>
-            <canvas id="canvas"></canvas>
-        </div>
+      <div class="info-line">
+        <label>Position:</label>
+        <span id="coords">—</span>
+      </div>
+      <div class="info-line">
+        <label>Zoom:</label>
+        <span id="zoom">—</span>
+      </div>
+      <div class="info-line">
+        <label>Main détectée:</label>
+        <span id="handStatus">Non</span>
+      </div>
 
-        <div id="status">
-            En attente de gestes...
-        </div>
+      <div id="video-container">
+        <video id="camera" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+      </div>
 
-        <div class="gesture-hint">
-            <strong>Gestes:</strong><br>
-            • Poing fermé = Zoom avant<br>
-            • Main ouverte = Zoom arrière<br>
-            • Déplacer la main = Déplacer la carte
-        </div>
+      <div id="status">En attente de gestes...</div>
 
-        <div class="controls">
-            <button onclick="resetMap()">Réinitialiser la carte</button>
-            <button onclick="toggleDetection()">Pause/Reprendre</button>
-        </div>
+      <div class="gesture-hint">
+        <strong>Gestes:</strong><br />
+        • Poing fermé = Zoom avant<br />
+        • Main ouverte = Zoom arrière<br />
+        • Déplacer la main = Déplacer la carte
+      </div>
+
+      <div class="feature-checkbox">
+        <label><input type="checkbox" id="enableOCR" /> Activer OCR</label>
+      </div>
+      <div class="feature-checkbox">
+        <label
+          ><input type="checkbox" id="enableFlagDetection" /> Détection de
+          drapeaux</label
+        >
+      </div>
+
+      <div class="controls">
+        <button onclick="resetMap()">Réinitialiser la carte</button>
+        <button onclick="toggleDetection()">Pause/Reprendre</button>
+      </div>
+
+      <div class="log-container" id="log"></div>
     </div>
 
     <div id="loading">
-        <h2>Chargement...</h2>
-        <div class="spinner"></div>
-        <p>Initialisation des modèles IA</p>
+      <h2>Chargement...</h2>
+      <div class="spinner"></div>
+      <p>Initialisation des modèles IA</p>
     </div>
 
     <script>
-        // ============================================
-        // VARIABLES GLOBALES
-        // ============================================
-        
-        let map;
-        let video, canvas, ctx;
-        let handposeModel;
-        let isDetecting = true;
-        let lastGesture = null;
-        let lastGestureTime = 0;
-        const GESTURE_COOLDOWN = 800; // ms
+      // ============================================
+      // VARIABLES GLOBALES
+      // ============================================
 
-        // Position de référence pour déplacement
-        let referenceHandPos = null;
-        let lastMoveTime = 0;
-        const MOVE_COOLDOWN = 500;
+      let map;
+      let video, canvas, ctx;
+      let handposeModel;
+      let mobilenetModel;
+      let isDetecting = true;
+      let lastGesture = null;
+      let lastGestureTime = 0;
+      const GESTURE_COOLDOWN = 800; // ms
 
-        // ============================================
-        // INITIALISATION DE LA CARTE
-        // ============================================
+      let referenceHandPos = null;
+      let lastMoveTime = 0;
+      const MOVE_COOLDOWN = 500;
 
-        function initMap() {
-            map = L.map('map', {
-                zoomControl: false,
-                scrollWheelZoom: false,
-                doubleClickZoom: false,
-                dragging: false,
-                touchZoom: false
-            }).setView([48.8566, 2.3522], 5);
+      // OCR et drapeaux
+      let lastOCRTime = 0;
+      const OCR_COOLDOWN = 3000; // ms
+      let lastFlagCheckTime = 0;
+      const FLAG_COOLDOWN = 3000; // ms
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+      const geoDatabase = {
+        france: [48.8566, 2.3522],
+        usa: [38.9072, -77.0369],
+        uk: [51.5074, -0.1278],
+        allemagne: [52.52, 13.405],
+        italie: [41.9028, 12.4964],
+        espagne: [40.4168, -3.7038],
+        japon: [35.6762, 139.6503],
+        canada: [45.4215, -75.6972],
+        brésil: [-15.7939, -47.8828],
+        chine: [39.9042, 116.4074],
+      };
 
-            // Mettre à jour les infos
-            map.on('move zoom', updateMapInfo);
-            updateMapInfo();
+      const flagKeywords = {
+        france: ["french", "tricolor", "france"],
+        usa: ["us", "america", "american", "stars", "stripes"],
+        uk: ["uk", "british", "england", "union jack"],
+        allemagne: ["germany", "deutschland", "german"],
+        italie: ["italy", "italien"],
+        espagne: ["spain", "españa"],
+        japon: ["japan", "nippon", "japon"],
+        canada: ["canada"],
+        brésil: ["brazil", "brésil"],
+        chine: ["china", "chinois"],
+      };
 
-            // Ajouter quelques marqueurs de pays
-            addCountryMarkers();
+      // ============================================
+      // FONCTIONS UTILITAIRES
+      // ============================================
+
+      function updateStatus(message) {
+        document.getElementById("status").textContent = message;
+      }
+
+      function addLog(message) {
+        const log = document.getElementById("log");
+        const entry = document.createElement("div");
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        log.prepend(entry);
+      }
+
+      function resetMap() {
+        map.setView([48.8566, 2.3522], 5);
+        updateStatus("Carte réinitialisée");
+      }
+
+      function toggleDetection() {
+        isDetecting = !isDetecting;
+        updateStatus(isDetecting ? "Détection activée" : "Détection en pause");
+      }
+
+      function hideLoading() {
+        document.getElementById("loading").classList.add("hidden");
+      }
+
+      // ============================================
+      // INITIALISATION CARTE
+      // ============================================
+
+      function initMap() {
+        map = L.map("map", {
+          zoomControl: false,
+          scrollWheelZoom: false,
+          doubleClickZoom: false,
+          dragging: false,
+          touchZoom: false,
+        }).setView([48.8566, 2.3522], 5);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "© OpenStreetMap contributors",
+        }).addTo(map);
+
+        map.on("move zoom", updateMapInfo);
+        updateMapInfo();
+
+        addCountryMarkers();
+      }
+
+      function updateMapInfo() {
+        const center = map.getCenter();
+        document.getElementById("coords").textContent = `${center.lat.toFixed(
+          4
+        )}°, ${center.lng.toFixed(4)}°`;
+        document.getElementById("zoom").textContent = map.getZoom();
+      }
+
+      function addCountryMarkers() {
+        Object.entries(geoDatabase).forEach(([name, coords]) => {
+          L.marker(coords).addTo(map).bindPopup(`<b>${name}</b>`);
+        });
+      }
+
+      // ============================================
+      // INITIALISATION CAMERA
+      // ============================================
+
+      async function initCamera() {
+        video = document.getElementById("camera");
+        canvas = document.getElementById("canvas");
+        ctx = canvas.getContext("2d");
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: "user",
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+            },
+          });
+          video.srcObject = stream;
+          video.onloadedmetadata = () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+          };
+          return true;
+        } catch (error) {
+          console.error("Erreur caméra:", error);
+          alert("Impossible d'accéder à la caméra. Autorisez l'accès.");
+          return false;
+        }
+      }
+
+      // ============================================
+      // CHARGEMENT DES MODÈLES
+      // ============================================
+
+      async function loadHandposeModel() {
+        try {
+          handposeModel = await handpose.load();
+          console.log("Handpose chargé");
+        } catch (error) {
+          console.error("Erreur Handpose:", error);
+        }
+      }
+
+      async function loadMobileNet() {
+        try {
+          mobilenetModel = await mobilenet.load();
+          console.log("MobileNet chargé");
+        } catch (error) {
+          console.error("Erreur MobileNet:", error);
+        }
+      }
+
+      // ============================================
+      // GESTES
+      // ============================================
+
+      async function detectHands() {
+        if (!isDetecting || !handposeModel || !video.videoWidth) {
+          requestAnimationFrame(detectHands);
+          return;
         }
 
-        function updateMapInfo() {
-            const center = map.getCenter();
-            document.getElementById('coords').textContent = 
-                `${center.lat.toFixed(4)}°, ${center.lng.toFixed(4)}°`;
-            document.getElementById('zoom').textContent = map.getZoom();
+        try {
+          const predictions = await handposeModel.estimateHands(video);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          if (predictions.length > 0) {
+            const hand = predictions[0];
+            document.getElementById("handStatus").textContent = "Oui";
+            drawHand(hand);
+            analyzeGesture(hand);
+          } else {
+            document.getElementById("handStatus").textContent = "Non";
+            referenceHandPos = null;
+          }
+
+          // OCR et détection drapeau
+          performOCR();
+          detectFlag();
+        } catch (error) {
+          console.error("Erreur détection:", error);
         }
 
-        function addCountryMarkers() {
-            const countries = [
-                { name: 'France', coords: [48.8566, 2.3522] },
-                { name: 'USA', coords: [38.9072, -77.0369] },
-                { name: 'UK', coords: [51.5074, -0.1278] },
-                { name: 'Allemagne', coords: [52.52, 13.405] },
-                { name: 'Italie', coords: [41.9028, 12.4964] },
-                { name: 'Espagne', coords: [40.4168, -3.7038] },
-                { name: 'Japon', coords: [35.6762, 139.6503] },
-                { name: 'Canada', coords: [45.4215, -75.6972] },
-                { name: 'Brésil', coords: [-15.7939, -47.8828] },
-                { name: 'Chine', coords: [39.9042, 116.4074] }
-            ];
+        requestAnimationFrame(detectHands);
+      }
 
-            countries.forEach(country => {
-                L.marker(country.coords)
-                    .addTo(map)
-                    .bindPopup(`<b>${country.name}</b>`);
-            });
+      function drawHand(hand) {
+        const landmarks = hand.landmarks;
+        ctx.fillStyle = "#00ff00";
+        landmarks.forEach((p) => {
+          ctx.beginPath();
+          ctx.arc(p[0], p[1], 5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.strokeStyle = "#00ff00";
+        ctx.lineWidth = 2;
+
+        const fingers = [
+          [0, 1, 2, 3, 4],
+          [0, 5, 6, 7, 8],
+          [0, 9, 10, 11, 12],
+          [0, 13, 14, 15, 16],
+          [0, 17, 18, 19, 20],
+        ];
+
+        fingers.forEach((f) => {
+          for (let i = 0; i < f.length - 1; i++) {
+            const p1 = landmarks[f[i]],
+              p2 = landmarks[f[i + 1]];
+            ctx.beginPath();
+            ctx.moveTo(p1[0], p1[1]);
+            ctx.lineTo(p2[0], p2[1]);
+            ctx.stroke();
+          }
+        });
+      }
+
+      function analyzeGesture(hand) {
+        const landmarks = hand.landmarks;
+        const now = Date.now();
+        const isHandClosed = detectHandClosed(landmarks);
+
+        if (now - lastGestureTime > GESTURE_COOLDOWN) {
+          if (isHandClosed && lastGesture !== "closed") {
+            map.zoomIn();
+            updateStatus("🔎 Zoom avant (poing fermé)");
+            lastGesture = "closed";
+            lastGestureTime = now;
+          } else if (!isHandClosed && lastGesture !== "open") {
+            map.zoomOut();
+            updateStatus("🔍 Zoom arrière (main ouverte)");
+            lastGesture = "open";
+            lastGestureTime = now;
+          }
         }
 
-        // ============================================
-        // INITIALISATION DE LA CAMÉRA
-        // ============================================
+        handleHandMovement(landmarks, now);
+        // Easter egg
+        checkEasterEgg(hand);
+      }
+      function detectHandClosed(landmarks) {
+        const thumbTip = landmarks[4],
+          indexTip = landmarks[8],
+          middleTip = landmarks[12],
+          palmBase = landmarks[0];
+        const thumbIndexDist = Math.hypot(
+          thumbTip[0] - indexTip[0],
+          thumbTip[1] - indexTip[1]
+        );
+        const palmMiddleDist = Math.hypot(
+          palmBase[0] - middleTip[0],
+          palmBase[1] - middleTip[1]
+        );
+        return thumbIndexDist < 50 && palmMiddleDist < 120;
+      }
 
-        async function initCamera() {
-            video = document.getElementById('camera');
-            canvas = document.getElementById('canvas');
-            ctx = canvas.getContext('2d');
+      function handleHandMovement(landmarks, now) {
+        if (now - lastMoveTime < MOVE_COOLDOWN) return;
+        const palm = landmarks[0];
+        if (!referenceHandPos) {
+          referenceHandPos = { x: palm[0], y: palm[1] };
+          return;
+        }
+        const dx = palm[0] - referenceHandPos.x,
+          dy = palm[1] - referenceHandPos.y,
+          threshold = 50;
+        if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+          map.panBy([-dx * 2, dy * 2]);
+          if (Math.abs(dx) > Math.abs(dy))
+            updateStatus(`👋 Déplacement ${dx > 0 ? "droite" : "gauche"}`);
+          else updateStatus(`👋 Déplacement ${dy > 0 ? "bas" : "haut"}`);
+          referenceHandPos = { x: palm[0], y: palm[1] };
+          lastMoveTime = now;
+        }
+      }
 
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: 'user',
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }
-                });
-                
-                video.srcObject = stream;
-                
-                video.onloadedmetadata = () => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                };
+      // ============================================
+      // OCR
+      // ============================================
 
-                return true;
-            } catch (error) {
-                console.error('Erreur caméra:', error);
-                alert('Impossible d\'accéder à la caméra. Autorisez l\'accès.');
-                return false;
+      async function performOCR() {
+        if (!document.getElementById("enableOCR").checked) return;
+        if (typeof Tesseract === "undefined") return; // ← vérification ajoutée
+
+        const now = Date.now();
+        if (now - lastOCRTime < OCR_COOLDOWN) return;
+        lastOCRTime = now;
+
+        try {
+          updateStatus("📝 Analyse du texte...");
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = video.videoWidth;
+          tempCanvas.height = video.videoHeight;
+          tempCanvas.getContext("2d").drawImage(video, 0, 0);
+
+          const {
+            data: { text },
+          } = await Tesseract.recognize(tempCanvas, "eng+fra", {
+            logger: () => {},
+          });
+          const cleanText = text.toLowerCase().trim();
+          addLog(`OCR: "${cleanText.substring(0, 30)}..."`);
+
+          for (const [place, coords] of Object.entries(geoDatabase)) {
+            if (cleanText.includes(place)) {
+              map.flyTo(coords, 10, { duration: 1.5 });
+              updateStatus(`📍 Lieu trouvé: ${place}`);
+              addLog(`✓ Navigation vers: ${place}`);
+              return;
             }
+          }
+          updateStatus("❌ Aucun lieu reconnu dans le texte");
+        } catch (e) {
+          console.error("Erreur OCR:", e);
+          updateStatus("❌ Erreur OCR");
         }
+      }
 
-        // ============================================
-        // CHARGEMENT DU MODÈLE HANDPOSE
-        // ============================================
+      function checkEasterEgg(hand) {
+        const landmarks = hand.landmarks;
 
-        async function loadHandposeModel() {
-            try {
-                console.log('Chargement du modèle Handpose...');
-                handposeModel = await handpose.load();
-                console.log('Modèle Handpose chargé avec succès');
-                return true;
-            } catch (error) {
-                console.error('Erreur chargement modèle:', error);
-                alert('Erreur lors du chargement du modèle IA');
-                return false;
-            }
+        // Exemple simple : main sur le menton (approximation)
+        const indexTip = landmarks[8];
+        const wrist = landmarks[0];
+
+        const dx = Math.abs(indexTip[0] - wrist[0]);
+        const dy = indexTip[1] < wrist[1] ? wrist[1] - indexTip[1] : 0;
+
+        if (dx < 40 && dy > 50) {
+          showThinkingMonkey();
         }
+      }
 
-        // ============================================
-        // DÉTECTION DES GESTES
-        // ============================================
+      function showThinkingMonkey() {
+        if (document.getElementById("thinkingMonkey")) return;
 
-        async function detectHands() {
-            if (!isDetecting || !handposeModel || !video.videoWidth) {
-                requestAnimationFrame(detectHands);
-                return;
-            }
+        const img = document.createElement("img");
+        img.src = "thinking_meme.jpeg"; // Ton image
+        img.id = "thinkingMonkey";
+        img.style.position = "fixed";
+        img.style.top = "50%";
+        img.style.left = "50%";
+        img.style.transform = "translate(-50%, -50%)";
+        img.style.zIndex = 2000;
+        img.style.width = "200px";
+        img.style.pointerEvents = "none";
+        document.body.appendChild(img);
 
-            try {
-                const predictions = await handposeModel.estimateHands(video);
-                
-                // Effacer le canvas
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Supprime l'image après 3 secondes
+        setTimeout(() => img.remove(), 3000);
+      }
 
-                if (predictions.length > 0) {
-                    const hand = predictions[0];
-                    document.getElementById('handStatus').textContent = 'Oui';
-                    
-                    // Dessiner les points de la main
-                    drawHand(hand);
-                    
-                    // Analyser le geste
-                    analyzeGesture(hand);
-                } else {
-                    document.getElementById('handStatus').textContent = 'Non';
-                    referenceHandPos = null;
+      // ============================================
+      // DÉTECTION DRAPEAUX
+      // ============================================
+
+      async function detectFlag() {
+        if (
+          !document.getElementById("enableFlagDetection").checked ||
+          !mobilenetModel
+        )
+          return;
+        const now = Date.now();
+        if (now - lastFlagCheckTime < FLAG_COOLDOWN) return;
+        lastFlagCheckTime = now;
+
+        try {
+          updateStatus("🏳️ Analyse du drapeau...");
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = video.videoWidth;
+          tempCanvas.height = video.videoHeight;
+          tempCanvas.getContext("2d").drawImage(video, 0, 0);
+
+          const img = tf.browser.fromPixels(tempCanvas);
+          const predictions = await mobilenetModel.classify(img);
+          img.dispose();
+
+          addLog(`Image: ${predictions[0].className}`);
+
+          const hasFlag = predictions.some((p) => {
+            const label = p.className.toLowerCase();
+            return Object.keys(flagKeywords).some((kw) => label.includes(kw));
+          });
+
+          if (hasFlag) {
+            for (const pred of predictions) {
+              const label = pred.className.toLowerCase();
+              for (const [place, coords] of Object.entries(geoDatabase)) {
+                if (label.includes(place)) {
+                  map.flyTo(coords, 8, { duration: 1.5 });
+                  updateStatus(`🏳️ Drapeau détecté: ${place}`);
+                  addLog(`✓ Drapeau reconnu: ${place}`);
+                  return;
                 }
-            } catch (error) {
-                console.error('Erreur détection:', error);
+              }
             }
-
-            requestAnimationFrame(detectHands);
+            updateStatus("🏳️ Drapeau détecté mais pays non identifié");
+          } else updateStatus("❌ Pas de drapeau détecté");
+        } catch (e) {
+          console.error("Erreur détection drapeau:", e);
+          updateStatus("❌ Erreur détection");
         }
+      }
 
-        function drawHand(hand) {
-            const landmarks = hand.landmarks;
-            
-            // Dessiner les points
-            ctx.fillStyle = '#00ff00';
-            landmarks.forEach(point => {
-                ctx.beginPath();
-                ctx.arc(point[0], point[1], 5, 0, 2 * Math.PI);
-                ctx.fill();
-            });
+      // ============================================
+      // INITIALISATION PRINCIPALE
+      // ============================================
 
-            // Dessiner les connexions
-            ctx.strokeStyle = '#00ff00';
-            ctx.lineWidth = 2;
-            
-            // Connexions des doigts
-            const fingers = [
-                [0, 1, 2, 3, 4],      // Pouce
-                [0, 5, 6, 7, 8],      // Index
-                [0, 9, 10, 11, 12],   // Majeur
-                [0, 13, 14, 15, 16],  // Annulaire
-                [0, 17, 18, 19, 20]   // Auriculaire
-            ];
-
-            fingers.forEach(finger => {
-                for (let i = 0; i < finger.length - 1; i++) {
-                    const point1 = landmarks[finger[i]];
-                    const point2 = landmarks[finger[i + 1]];
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(point1[0], point1[1]);
-                    ctx.lineTo(point2[0], point2[1]);
-                    ctx.stroke();
-                }
-            });
+      async function init() {
+        console.log("Initialisation...");
+        initMap();
+        const camOk = await initCamera();
+        if (!camOk) {
+          hideLoading();
+          return;
         }
+        await loadHandposeModel();
+        await loadMobileNet();
+        hideLoading();
+        updateStatus("Prêt ! Montrez votre main à la caméra");
+        detectHands();
+      }
 
-        function analyzeGesture(hand) {
-            const landmarks = hand.landmarks;
-            const now = Date.now();
-
-            // Calculer si la main est fermée ou ouverte
-            const isHandClosed = detectHandClosed(landmarks);
-            
-            // Geste de zoom
-            if (now - lastGestureTime > GESTURE_COOLDOWN) {
-                if (isHandClosed && lastGesture !== 'closed') {
-                    map.zoomIn();
-                    updateStatus('🔎 Zoom avant (poing fermé)');
-                    lastGesture = 'closed';
-                    lastGestureTime = now;
-                } else if (!isHandClosed && lastGesture !== 'open') {
-                    map.zoomOut();
-                    updateStatus('🔍 Zoom arrière (main ouverte)');
-                    lastGesture = 'open';
-                    lastGestureTime = now;
-                }
-            }
-
-            // Déplacement basé sur la position de la paume
-            handleHandMovement(landmarks, now);
-        }
-
-        function detectHandClosed(landmarks) {
-            // Vérifier si les doigts sont pliés
-            const thumbTip = landmarks[4];
-            const indexTip = landmarks[8];
-            const middleTip = landmarks[12];
-            const palmBase = landmarks[0];
-
-            // Distance entre le pouce et l'index
-            const thumbIndexDist = Math.sqrt(
-                Math.pow(thumbTip[0] - indexTip[0], 2) + 
-                Math.pow(thumbTip[1] - indexTip[1], 2)
-            );
-
-            // Distance entre la paume et le majeur
-            const palmMiddleDist = Math.sqrt(
-                Math.pow(palmBase[0] - middleTip[0], 2) + 
-                Math.pow(palmBase[1] - middleTip[1], 2)
-            );
-
-            // Main fermée si les distances sont petites
-            return thumbIndexDist < 50 && palmMiddleDist < 120;
-        }
-
-        function handleHandMovement(landmarks, now) {
-            if (now - lastMoveTime < MOVE_COOLDOWN) return;
-
-            const palmCenter = landmarks[0]; // Centre de la paume
-            
-            if (!referenceHandPos) {
-                referenceHandPos = { x: palmCenter[0], y: palmCenter[1] };
-                return;
-            }
-
-            const dx = palmCenter[0] - referenceHandPos.x;
-            const dy = palmCenter[1] - referenceHandPos.y;
-            const threshold = 50; // pixels
-
-            if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
-                // Inverser les déplacements car l'image est miroir
-                const panX = -dx * 2;
-                const panY = dy * 2;
-
-                map.panBy([panX, panY]);
-                
-                if (Math.abs(dx) > Math.abs(dy)) {
-                    updateStatus(`👋 Déplacement ${dx > 0 ? 'droite' : 'gauche'}`);
-                } else {
-                    updateStatus(`👋 Déplacement ${dy > 0 ? 'bas' : 'haut'}`);
-                }
-
-                referenceHandPos = { x: palmCenter[0], y: palmCenter[1] };
-                lastMoveTime = now;
-            }
-        }
-
-        function updateStatus(message) {
-            document.getElementById('status').textContent = message;
-        }
-
-        // ============================================
-        // FONCTIONS UTILITAIRES
-        // ============================================
-
-        function resetMap() {
-            map.setView([48.8566, 2.3522], 5);
-            updateStatus('Carte réinitialisée');
-        }
-
-        function toggleDetection() {
-            isDetecting = !isDetecting;
-            updateStatus(isDetecting ? 'Détection activée' : 'Détection en pause');
-        }
-
-        function hideLoading() {
-            document.getElementById('loading').classList.add('hidden');
-        }
-
-        // ============================================
-        // INITIALISATION PRINCIPALE
-        // ============================================
-
-        async function init() {
-            console.log('Initialisation...');
-            
-            // Initialiser la carte
-            initMap();
-            
-            // Initialiser la caméra
-            const cameraOk = await initCamera();
-            if (!cameraOk) {
-                hideLoading();
-                return;
-            }
-
-            // Charger le modèle
-            const modelOk = await loadHandposeModel();
-            if (!modelOk) {
-                hideLoading();
-                return;
-            }
-
-            // Démarrer la détection
-            hideLoading();
-            updateStatus('Prêt ! Montrez votre main à la caméra');
-            detectHands();
-        }
-
-        // Démarrer quand la page est chargée
-        window.addEventListener('DOMContentLoaded', init);
+      window.addEventListener("DOMContentLoaded", init);
     </script>
-</body>
+  </body>
 </html>
